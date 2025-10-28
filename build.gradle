@@ -4,6 +4,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.7'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.25'
+    id "org.jooq.jooq-codegen-gradle" version "3.20.8"
 }
 
 group = 'com.hata'
@@ -51,3 +52,44 @@ allOpen {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+//sourceSets {
+//    main {
+//        java {
+//            srcDir 'build/generated-src/jooq/main'
+//        }
+//    }
+//}
+//
+//def dbHost = System.getenv('DB_HOST') ?: 'localhost'
+//
+//jooq {
+//    version = '3.19.27' // jOOQ バージョン
+//    configurations {
+//        main {                 // タスク名: generateJooq
+//            generateSchemaSourceOnCompilation = false
+//            jooqConfiguration {
+//                jdbc {
+//                    driver = 'org.postgresql.Driver'
+//                    // ローカル実行なら localhost、compose 内なら jdbc:postgresql://postgres:5432/appdb
+//                    url = 'jdbc:postgresql://${dbHost}:5432/appdb'
+//                    user = 'appuser'
+//                    password = 'apppass'
+//                }
+//                generator {
+//                    name = 'org.jooq.codegen.JavaGenerator'
+//                    database {
+//                        inputSchema = 'public'
+//                        includes = '.*'   // 必要に応じて調整
+//                        excludes = ''
+//                        // forcedTypes 等はここに追加可能（ドキュメント参照）
+//                    }
+//                    target {
+//                        packageName = 'com.hata.jooq'
+//                        directory = 'build/generated-src/jooq/main'
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
