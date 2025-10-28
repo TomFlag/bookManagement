@@ -1,9 +1,9 @@
 plugins {
-	id 'org.jetbrains.kotlin.jvm' version '1.9.25'
-	id 'org.jetbrains.kotlin.plugin.spring' version '1.9.25'
-	id 'org.springframework.boot' version '3.5.7'
-	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.25'
+    id 'org.jetbrains.kotlin.jvm' version '1.9.25'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.9.25'
+    id 'org.springframework.boot' version '3.5.7'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.25'
     id "org.jooq.jooq-codegen-gradle" version "3.20.8"
 }
 
@@ -12,56 +12,57 @@ version = '0.0.1-SNAPSHOT'
 description = 'Coding test for quocard'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-jooq'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
-	implementation 'org.flywaydb:flyway-core'
-	implementation 'org.flywaydb:flyway-database-postgresql'
-	implementation 'org.jetbrains.kotlin:kotlin-reflect'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
-	runtimeOnly 'org.postgresql:postgresql'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jooq:jooq:3.20.8'
+    implementation 'org.jooq:jooq-meta:3.20.8'
+    implementation 'org.jooq:jooq-codegen:3.20.8'
+    implementation 'org.jooq:jooq-postgres-extensions:3.20.8'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+    runtimeOnly 'org.postgresql:postgresql'
+    jooqCodegen 'org.postgresql:postgresql'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 kotlin {
-	compilerOptions {
-		freeCompilerArgs.addAll '-Xjsr305=strict'
-	}
+    compilerOptions {
+        freeCompilerArgs.addAll '-Xjsr305=strict'
+    }
 }
 
 allOpen {
-	annotation 'jakarta.persistence.Entity'
-	annotation 'jakarta.persistence.MappedSuperclass'
-	annotation 'jakarta.persistence.Embeddable'
+    annotation 'jakarta.persistence.Entity'
+    annotation 'jakarta.persistence.MappedSuperclass'
+    annotation 'jakarta.persistence.Embeddable'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
 
-//sourceSets {
-//    main {
-//        java {
-//            srcDir 'build/generated-src/jooq/main'
-//        }
-//    }
-//}
-//
-//def dbHost = System.getenv('DB_HOST') ?: 'localhost'
+sourceSets.main {
+    java.srcDirs("build/generated-sources/jooq")
+}
+
+def dbHost = System.getenv('DB_HOST') ?: 'localhost'
 //
 //jooq {
 //    version = '3.19.27' // jOOQ バージョン
@@ -93,3 +94,136 @@ tasks.named('test') {
 //        }
 //    }
 //}
+jooq {
+    configuration {
+
+        // Configure the database connection here
+        jdbc {
+            driver = "org.postgresql.Driver"
+            url = "jdbc:postgresql://${dbHost}:5432/appdb"
+            user = "appuser"
+            password = "apppass"
+
+            // You can also pass user/password and other JDBC properties in the optional properties tag:
+            //        properties {
+            //            property {
+            //                key = "user"
+            //                value = "[db-user]"
+            //            }
+            //            property {
+            //                key = "password"
+            //                value = "[db-password]"
+            //            }
+            //        }
+        }
+        generator {
+            database {
+
+                // The database dialect from jooq-meta. Available dialects are
+                // named org.jooq.meta.[database].[database]Database.
+                //
+                // Natively supported values are:
+                //
+                // org.jooq.meta.ase.ASEDatabase
+                // org.jooq.meta.auroramysql.AuroraMySQLDatabase
+                // org.jooq.meta.aurorapostgres.AuroraPostgresDatabase
+                // org.jooq.meta.clickhouse.ClickHouseDatabase
+                // org.jooq.meta.cockroachdb.CockroachDBDatabase
+                // org.jooq.meta.databricks.DatabricksDatabase
+                // org.jooq.meta.db2.DB2Database
+                // org.jooq.meta.derby.DerbyDatabase
+                // org.jooq.meta.firebird.FirebirdDatabase
+                // org.jooq.meta.h2.H2Database
+                // org.jooq.meta.hana.HANADatabase
+                // org.jooq.meta.hsqldb.HSQLDBDatabase
+                // org.jooq.meta.ignite.IgniteDatabase
+                // org.jooq.meta.informix.InformixDatabase
+                // org.jooq.meta.ingres.IngresDatabase
+                // org.jooq.meta.mariadb.MariaDBDatabase
+                // org.jooq.meta.mysql.MySQLDatabase
+                // org.jooq.meta.oracle.OracleDatabase
+                // org.jooq.meta.postgres.PostgresDatabase
+                // org.jooq.meta.redshift.RedshiftDatabase
+                // org.jooq.meta.snowflake.SnowflakeDatabase
+                // org.jooq.meta.sqldatawarehouse.SQLDataWarehouseDatabase
+                // org.jooq.meta.sqlite.SQLiteDatabase
+                // org.jooq.meta.sqlserver.SQLServerDatabase
+                // org.jooq.meta.sybase.SybaseDatabase
+                // org.jooq.meta.teradata.TeradataDatabase
+                // org.jooq.meta.trino.TrinoDatabase
+                // org.jooq.meta.vertica.VerticaDatabase
+                //
+                // This value can be used to reverse-engineer generic JDBC DatabaseMetaData (e.g. for MS Access)
+                //
+                // org.jooq.meta.jdbc.JDBCDatabase
+                //
+                // This value can be used to reverse-engineer standard jOOQ-meta XML formats
+                //
+                // org.jooq.meta.xml.XMLDatabase
+                //
+                // This value can be used to reverse-engineer schemas defined by SQL files
+                // (requires jooq-meta-extensions dependency)
+                //
+                // org.jooq.meta.extensions.ddl.DDLDatabase
+                //
+                // This value can be used to reverse-engineer schemas defined by JPA annotated entities
+                // (requires jooq-meta-extensions-hibernate dependency)
+                //
+                // org.jooq.meta.extensions.jpa.JPADatabase
+                //
+                // This value can be used to reverse-engineer schemas defined by Liquibase migration files
+                // (requires jooq-meta-extensions-liquibase dependency)
+                //
+                // org.jooq.meta.extensions.liquibase.LiquibaseDatabase
+                //
+                // You can also provide your own org.jooq.meta.Database implementation
+                // here, if your database is currently not supported
+                name = "org.jooq.meta.postgres.PostgresDatabase"
+
+                // All elements that are generated from your schema (A Java regular expression.
+                // Use the pipe to separate several expressions) Watch out for
+                // case-sensitivity. Depending on your database, this might be
+                // important!
+                //
+                // You can create case-insensitive regular expressions using this syntax: (?i:expr)
+                //
+                // Whitespace is ignored and comments are possible.
+                includes = ".*"
+
+                // All elements that are excluded from your schema (A Java regular expression.
+                // Use the pipe to separate several expressions). Excludes match before
+                // includes, i.e. excludes have a higher priority
+                excludes = '''
+               UNUSED_TABLE                # This table (unqualified name) should not be generated
+             | PREFIX_.*                   # Objects with a given prefix should not be generated
+             | SECRET_SCHEMA\\.SECRET_TABLE # This table (qualified name) should not be generated
+             | SECRET_ROUTINE              # This routine (unqualified name) ...
+          '''
+
+                // The schema that is used locally as a source for meta information.
+                // This could be your development schema or the production schema, etc
+                // This cannot be combined with the schemata element.
+                //
+                // If left empty, jOOQ will generate all available schemata. See the
+                // manual's next section to learn how to generate several schemata
+                inputSchema = "public"
+            }
+
+            // Generation flags: See advanced configuration properties
+            generate {}
+            target {
+
+                // The destination package of your generated classes (within the
+                // destination directory)
+                //
+                // jOOQ may append the schema name to this package if generating multiple schemas,
+                // e.g. org.jooq.your.packagename.schema1
+                // org.jooq.your.packagename.schema2
+                packageName = "com.hata.jooq"
+
+                // The destination directory of your generated classes
+                directory = "build/generated-src/jooq/main"
+            }
+        }
+    }
+}
