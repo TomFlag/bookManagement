@@ -1,0 +1,105 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.25'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.9.25'
+    id 'org.springframework.boot' version '3.5.7'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.25'
+    id "org.jooq.jooq-codegen-gradle" version "3.20.8"
+}
+
+group = 'com.hata'
+version = '0.0.1-SNAPSHOT'
+description = 'Coding test for quocard'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jooq:jooq:3.20.8'
+    implementation 'org.jooq:jooq-meta:3.20.8'
+    implementation 'org.jooq:jooq-codegen:3.20.8'
+    implementation 'org.jooq:jooq-postgres-extensions:3.20.8'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+    runtimeOnly 'org.postgresql:postgresql'
+    jooqCodegen 'org.postgresql:postgresql'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll '-Xjsr305=strict'
+    }
+}
+
+allOpen {
+    annotation 'jakarta.persistence.Entity'
+    annotation 'jakarta.persistence.MappedSuperclass'
+    annotation 'jakarta.persistence.Embeddable'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+sourceSets.main {
+    java.srcDirs("build/generated-src/jooq/main")
+}
+
+def dbHost = System.getenv('DB_HOST') ?: 'localhost'
+
+jooq {
+    configuration {
+
+        // Configure the database connection here
+        jdbc {
+            driver = "org.postgresql.Driver"
+            url = "jdbc:postgresql://${dbHost}:5432/appdb"
+            user = "appuser"
+            password = "apppass"
+        }
+        generator {
+            database {
+                name = "org.jooq.meta.postgres.PostgresDatabase"
+                includes = ".*"
+                excludes =
+                        '''
+                           UNUSED_TABLE                # This table (unqualified name) should not be generated
+                         | PREFIX_.*                   # Objects with a given prefix should not be generated
+                         | SECRET_SCHEMA\\.SECRET_TABLE # This table (qualified name) should not be generated
+                         | SECRET_ROUTINE              # This routine (unqualified name) ...
+                        '''
+                inputSchema = "public"
+            }
+
+            generate {}
+            target {
+                packageName = "com.hata.jooq"
+                directory = "build/generated-src/jooq/main"
+            }
+        }
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn 'jooqCodegen'   // プラグインが作るタスク名を使う（存在しない場合は `./gradlew tasks --all` で確認）
+}
+tasks.named('compileKotlin') {
+    dependsOn 'jooqCodegen'
+}
