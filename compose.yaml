@@ -5,6 +5,7 @@ services:
       - 'POSTGRES_DB=appdb'
       - 'POSTGRES_USER=appuser'
       - 'POSTGRES_PASSWORD=apppass'
+    command: ["postgres", "-c", "timezone=Asia/Tokyo"]
     ports:
       - "5432:5432"
     volumes:
@@ -14,20 +15,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  backend:
-    build:
-      context: .
-    depends_on:
-      - postgres
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/appdb
-      SPRING_DATASOURCE_USERNAME: appuser
-      SPRING_DATASOURCE_PASSWORD: apppass
-      DB_HOST: postgres
-    volumes:
-      - ./:/app
-    working_dir: /app
-    command: ./gradlew bootRun --stacktrace
