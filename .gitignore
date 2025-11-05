@@ -28,7 +28,7 @@ replay_pid*
 .kotlin/
 
 # DB data
-db/
+/db
 
 # gradle
 .gradle/
