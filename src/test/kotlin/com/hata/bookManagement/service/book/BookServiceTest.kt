@@ -94,14 +94,14 @@ class BookServiceTest {
         // prepare two authors
         val a1 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "D1")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1975,5,5).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1975, 5, 5).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a1Id = a1.getValue(AUTHORS.ID) as Long
 
         val a2 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "D2")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1985,6,6).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1985, 6, 6).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a2Id = a2.getValue(AUTHORS.ID) as Long
@@ -164,7 +164,7 @@ class BookServiceTest {
         // create initial author and book via service
         val a1 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Author C")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,1,1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 1, 1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a1Id = a1.getValue(AUTHORS.ID) as Long
@@ -213,7 +213,7 @@ class BookServiceTest {
         // create initial author and book via service
         val a1 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Author D")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,1,1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 1, 1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a1Id = a1.getValue(AUTHORS.ID) as Long
@@ -249,7 +249,7 @@ class BookServiceTest {
         // create initial author and book via service
         val a1 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Author A")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,1,1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 1, 1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a1Id = a1.getValue(AUTHORS.ID) as Long
@@ -270,7 +270,7 @@ class BookServiceTest {
         // prepare new author
         val a2 = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Author B")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1980,2,2).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1980, 2, 2).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
         val a2Id = a2.getValue(AUTHORS.ID) as Long
