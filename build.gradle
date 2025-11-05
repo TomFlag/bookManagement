@@ -40,6 +40,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
+    testImplementation 'org.testcontainers:postgresql:1.19.0'
 }
 
 kotlin {
@@ -54,12 +56,23 @@ allOpen {
     annotation 'jakarta.persistence.Embeddable'
 }
 
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
 
-sourceSets.main {
-    java.srcDirs("build/generated-src/jooq/main")
+sourceSets {
+    main {
+        java {
+            srcDir 'build/generated-src/jooq/main'
+        }
+    }
 }
 
 def dbHost = System.getenv('DB_HOST') ?: 'localhost'
@@ -102,4 +115,8 @@ tasks.named('compileJava') {
 }
 tasks.named('compileKotlin') {
     dependsOn 'jooqCodegen'
+}
+
+tasks.named('bootRun') {
+    jvmArgs = ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"]
 }
