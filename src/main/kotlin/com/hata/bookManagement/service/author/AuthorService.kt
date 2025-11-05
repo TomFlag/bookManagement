@@ -1,9 +1,9 @@
 package com.hata.bookManagement.service.author
 
-import com.hata.bookManagement.dto.AuthorRequest
-import com.hata.bookManagement.dto.AuthorResponse
-import com.hata.bookManagement.dto.AuthorUpdateRequest
-import com.hata.bookManagement.dto.BookResponse
+import com.hata.bookManagement.dto.author.AuthorRequest
+import com.hata.bookManagement.dto.author.AuthorResponse
+import com.hata.bookManagement.dto.author.AuthorUpdateRequest
+import com.hata.bookManagement.dto.book.BookResponse
 import com.hata.jooq.enums.PublicationStatus
 import com.hata.jooq.tables.Authors.AUTHORS
 import com.hata.jooq.tables.BookAuthors.BOOK_AUTHORS

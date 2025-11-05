@@ -1,8 +1,8 @@
-package com.hata.bookManagement.api
+package com.hata.bookManagement.api.book
 
-import com.hata.bookManagement.dto.BookRequest
-import com.hata.bookManagement.dto.BookResponse
-import com.hata.bookManagement.dto.BookUpdateRequest
+import com.hata.bookManagement.dto.book.BookRequest
+import com.hata.bookManagement.dto.book.BookResponse
+import com.hata.bookManagement.dto.book.BookUpdateRequest
 import com.hata.bookManagement.service.book.BookService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PathVariable

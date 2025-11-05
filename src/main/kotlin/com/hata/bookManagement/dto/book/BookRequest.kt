@@ -1,4 +1,4 @@
-package com.hata.bookManagement.dto
+package com.hata.bookManagement.dto.book
 
 import java.math.BigDecimal
 

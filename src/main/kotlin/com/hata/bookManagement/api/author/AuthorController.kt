@@ -1,9 +1,9 @@
-package com.hata.bookManagement.api
+package com.hata.bookManagement.api.author
 
-import com.hata.bookManagement.dto.AuthorRequest
-import com.hata.bookManagement.dto.AuthorUpdateRequest
-import com.hata.bookManagement.dto.AuthorResponse
-import com.hata.bookManagement.dto.BookResponse
+import com.hata.bookManagement.dto.author.AuthorRequest
+import com.hata.bookManagement.dto.author.AuthorUpdateRequest
+import com.hata.bookManagement.dto.author.AuthorResponse
+import com.hata.bookManagement.dto.book.BookResponse
 import com.hata.bookManagement.service.author.AuthorService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
