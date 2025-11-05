@@ -1,8 +1,8 @@
 package com.hata.bookManagement.api.book
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.hata.bookManagement.dto.book.BookRequest
 import com.hata.bookManagement.dto.book.BookResponse
 import com.hata.bookManagement.dto.book.BookUpdateRequest
@@ -13,8 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.http.MediaType
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
@@ -66,9 +66,11 @@ class BookControllerTest {
         val reqJson = mapper.writeValueAsString(req)
         val expectedJson = mapper.writeValueAsString(resp)
 
-        mockMvc.perform(post("/api/books")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reqJson))
+        mockMvc.perform(
+            post("/api/books")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reqJson)
+        )
             .andExpect(status().isCreated)
             .andExpect(content().json(expectedJson))
     }
@@ -95,9 +97,11 @@ class BookControllerTest {
         val reqJson = mapper.writeValueAsString(updateReq)
         val expectedJson = mapper.writeValueAsString(resp)
 
-        mockMvc.perform(put("/api/books/200")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reqJson))
+        mockMvc.perform(
+            put("/api/books/200")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reqJson)
+        )
             .andExpect(status().isOk)
             .andExpect(content().json(expectedJson))
     }

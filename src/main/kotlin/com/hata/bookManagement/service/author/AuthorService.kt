@@ -142,7 +142,14 @@ class AuthorService(private val dsl: DSLContext) {
         if (bookIds.isEmpty()) return emptyList()
 
         // 取得した書籍群について、各書籍の情報と著者リストを取得してグルーピング
-        val rows = dsl.select(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS, BOOK_AUTHORS.AUTHOR_ID, BOOK_AUTHORS.AUTHOR_ORDER)
+        val rows = dsl.select(
+            BOOKS.ID,
+            BOOKS.TITLE,
+            BOOKS.PRICE,
+            BOOKS.STATUS,
+            BOOK_AUTHORS.AUTHOR_ID,
+            BOOK_AUTHORS.AUTHOR_ORDER
+        )
             .from(BOOKS)
             .join(BOOK_AUTHORS).on(BOOKS.ID.eq(BOOK_AUTHORS.BOOK_ID))
             .where(BOOKS.ID.`in`(bookIds))

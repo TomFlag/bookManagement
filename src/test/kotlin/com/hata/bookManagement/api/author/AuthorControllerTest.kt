@@ -1,8 +1,8 @@
 package com.hata.bookManagement.api.author
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.hata.bookManagement.dto.book.BookResponse
 import com.hata.bookManagement.service.author.AuthorService
 import org.junit.jupiter.api.BeforeEach
@@ -11,12 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
-import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -86,9 +84,11 @@ class AuthorControllerTest {
         val expectedJson = mapper.writeValueAsString(resp)
 
         // Act & Assert
-        mockMvc.perform(post("/api/authors")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reqJson))
+        mockMvc.perform(
+            post("/api/authors")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reqJson)
+        )
             .andExpect(status().isCreated)
             .andExpect(content().json(expectedJson))
     }
@@ -115,9 +115,11 @@ class AuthorControllerTest {
         val expectedJson = mapper.writeValueAsString(resp)
 
         // Act & Assert
-        mockMvc.perform(put("/api/authors/100")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reqJson))
+        mockMvc.perform(
+            put("/api/authors/100")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reqJson)
+        )
             .andExpect(status().isOk)
             .andExpect(content().json(expectedJson))
     }
