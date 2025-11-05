@@ -17,18 +17,26 @@ class RestExceptionHandler {
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.message ?: "not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.message ?: "not found"))
 
     @ExceptionHandler(BadRequestException::class, IllegalArgumentException::class)
     fun handleBadRequest(ex: Throwable): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.message ?: "bad request"))
+        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.message ?: "bad request"))
 
-    @ExceptionHandler(ConflictException::class, DataAccessException::class, SQLIntegrityConstraintViolationException::class)
+    @ExceptionHandler(
+        ConflictException::class,
+        DataAccessException::class,
+        SQLIntegrityConstraintViolationException::class
+    )
     fun handleConflict(ex: Throwable): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse(HttpStatus.CONFLICT.value(), ex.message ?: "conflict"))
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ErrorResponse(HttpStatus.CONFLICT.value(), ex.message ?: "conflict"))
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.message ?: "internal error"))
+        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.message ?: "internal error"))
 
 }

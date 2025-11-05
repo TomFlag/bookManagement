@@ -55,7 +55,7 @@ class AuthorServiceTest {
         // insert initial author
         val initial = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Old Name")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 3, 4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
 
@@ -76,7 +76,7 @@ class AuthorServiceTest {
         // create author
         val authorRec = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Author A")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1980,1,1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1980, 1, 1).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
 
@@ -121,7 +121,7 @@ class AuthorServiceTest {
     fun createAuthorBlankName_shouldThrowIllegalArgument() {
         val req = AuthorRequest(name = " ", birthDate = LocalDate.of(1990, 1, 1))
 
-            org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
             service.createAuthor(req)
         }
     }
@@ -165,7 +165,7 @@ class AuthorServiceTest {
         // insert initial author
         val initial = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Old Name2")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 3, 4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
 
@@ -183,7 +183,7 @@ class AuthorServiceTest {
         // insert initial author
         val initial = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Old Name3")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 3, 4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
 
@@ -201,7 +201,7 @@ class AuthorServiceTest {
         // insert initial author
         val initial = dsl.insertInto(AUTHORS)
             .set(AUTHORS.NAME, "Old Name4")
-            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970, 3, 4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
             .returning(AUTHORS.ID)
             .fetchOne()!!
 

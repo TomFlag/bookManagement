@@ -3,6 +3,9 @@ package com.hata.bookManagement.service.book
 import com.hata.bookManagement.dto.book.BookRequest
 import com.hata.bookManagement.dto.book.BookResponse
 import com.hata.bookManagement.dto.book.BookUpdateRequest
+import com.hata.bookManagement.exception.BadRequestException
+import com.hata.bookManagement.exception.ConflictException
+import com.hata.bookManagement.exception.NotFoundException
 import com.hata.jooq.enums.PublicationStatus
 import com.hata.jooq.tables.Authors.AUTHORS
 import com.hata.jooq.tables.BookAuthors.BOOK_AUTHORS
@@ -13,9 +16,6 @@ import org.jooq.UpdateSetFirstStep
 import org.jooq.UpdateSetMoreStep
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import com.hata.bookManagement.exception.BadRequestException
-import com.hata.bookManagement.exception.NotFoundException
-import com.hata.bookManagement.exception.ConflictException
 
 @Service
 class BookService(private val dsl: DSLContext) {
@@ -94,8 +94,8 @@ class BookService(private val dsl: DSLContext) {
 
         return mapConflict {
             val bookRecord = insertStep
-                    .returning(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
-                    .fetchOne() ?: throw ConflictException("failed to insert book")
+                .returning(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
+                .fetchOne() ?: throw ConflictException("failed to insert book")
 
             val id = bookRecord.get(BOOKS.ID) as Long
             val title = bookRecord.get(BOOKS.TITLE) as String
