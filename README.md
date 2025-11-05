@@ -10,24 +10,39 @@
 * develop - 開発中の最新ソース
 * dev-XXX - 各機能の作成・改修用。developから作成してdevelopにマージ
 
+## 動作確認済み環境
+
+* macOS
+* Docker Desktop
+* openjdk 21.0.5
+
 ## 起動手順
 
-1. JDK 21以上をインストール
+1. 上記の必要なツールをインストール
 2. リポジトリをクローン
 3. ターミナルでプロジェクトルートに移動
-4. 以下コマンドを実行してDB起動（flywayマイグレーションが自動実行）
+4. 以下コマンドを実行してDB起動（flywayマイグレーションがコンテナ利用して自動実行）
 
    ```bash
    docker compose up -d
    ```
 
-5. DBの起動確認 ヘルスチェックが実装済みのため、status: healthyになればOK
+5. DBの起動確認
+   ヘルスチェックが実装済みのため、status: healthyになればOK
 
    ```bash
    docker compose ps
    ```
 
-6. 以下コマンドを実行してアプリケーション起動
+6. DBマイグレーションの確認
+
+   1.2.0までマイグレーションされていることを確認
+
+   ```bash
+   docker compose -f compose.yaml exec postgres psql -U appuser -d appdb -c "SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
+   ```
+
+7. 以下コマンドを実行して起動、もしくはIntellijから起動 (jooqは自動実行される)
 
    ```bash
    ./gradlew bootRun
@@ -41,7 +56,6 @@
   * DBはAsia/Tokyoのtimestamp型
   * Spring Bootの設定もAsia/Tokyoだが、時刻は扱わない項目はLocalDateで対応
   * 仮に他のタイムゾーンを利用したい場合は、Spring Bootの設定を変更して対応する
-
 
 ## 設計
 
@@ -132,4 +146,3 @@ BASE_URL="http://localhost:8080"
    ```bash
    curl -s "$BASE_URL/api/authors/$AUTHOR_ID/books"
    ```
-
