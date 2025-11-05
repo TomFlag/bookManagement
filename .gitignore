@@ -37,3 +37,12 @@ db/
 
 # .vscode/
 .vscode/
+
+# build
+/build/*
+!/build/generated-src/
+!/build/generated-src/**
+bin/
+
+# macOS
+.DS_Store
