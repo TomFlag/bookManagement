@@ -25,23 +25,35 @@ class AuthorService(private val dsl: DSLContext) {
 
     @Transactional
     fun createAuthor(request: AuthorRequest): AuthorResponse {
+        // 入力検証
+        if (request.name.isBlank()) {
+            throw IllegalArgumentException("name must not be blank")
+        }
+
         val odt = request.birthDate.atStartOfDay(jst).toOffsetDateTime()
 
-        val record = dsl.insertInto(AUTHORS)
-            .set(AUTHORS.NAME, request.name)
-            .set(AUTHORS.BIRTH_DATE, odt)
-            .returning(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
-            .fetchOne() ?: throw IllegalStateException("failed to insert author")
+        try {
+            val record = dsl.insertInto(AUTHORS)
+                .set(AUTHORS.NAME, request.name)
+                .set(AUTHORS.BIRTH_DATE, odt)
+                .returning(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
+                .fetchOne() ?: throw IllegalStateException("failed to insert author")
 
-        val storedOdt = record.getValue(AUTHORS.BIRTH_DATE)!!
-        // OffsetDateTime -> Asia/Tokyo の LocalDate に変換して返す
-        val birthLocalDate = storedOdt.toInstant().atZone(jst).toLocalDate()
+            val storedOdt = requireNotNull(record.getValue(AUTHORS.BIRTH_DATE)) as OffsetDateTime
+            // OffsetDateTime -> Asia/Tokyo の LocalDate に変換して返す
+            val birthLocalDate = storedOdt.toInstant().atZone(jst).toLocalDate()
 
-        return AuthorResponse(
-            id = record.getValue(AUTHORS.ID)!!,
-            name = record.getValue(AUTHORS.NAME)!!,
-            birthDate = birthLocalDate
-        )
+            return AuthorResponse(
+                id = requireNotNull(record.getValue(AUTHORS.ID)) as Long,
+                name = requireNotNull(record.getValue(AUTHORS.NAME)) as String,
+                birthDate = birthLocalDate
+            )
+        } catch (e: org.jooq.exception.DataAccessException) {
+            // 一意制約違反などで登録に失敗した場合、409 Conflict を返す
+            throw ResponseStatusException(HttpStatus.CONFLICT, "author already exists", e)
+        } catch (e: java.sql.SQLIntegrityConstraintViolationException) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "author already exists", e)
+        }
     }
 
     @Transactional
