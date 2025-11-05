@@ -11,27 +11,73 @@ import com.hata.jooq.tables.records.BooksRecord
 import org.jooq.DSLContext
 import org.jooq.UpdateSetFirstStep
 import org.jooq.UpdateSetMoreStep
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
-import java.math.BigDecimal
+import com.hata.bookManagement.exception.BadRequestException
+import com.hata.bookManagement.exception.NotFoundException
+import com.hata.bookManagement.exception.ConflictException
 
 @Service
 class BookService(private val dsl: DSLContext) {
+    // ----------------- helpers -----------------
+    private fun checkPublicationStatus(status: String?): PublicationStatus? {
+        return status?.let {
+            try {
+                PublicationStatus.valueOf(it)
+            } catch (_: IllegalArgumentException) {
+                throw BadRequestException("invalid status: $it")
+            }
+        }
+    }
+
+    private fun checkAuthorExist(ids: List<Long>): List<Long> {
+        val deduped = ids.distinct()
+        if (deduped.isEmpty()) {
+            throw BadRequestException("book must have at least one author")
+        }
+        val cnt = dsl.selectCount()
+            .from(AUTHORS)
+            .where(AUTHORS.ID.`in`(deduped))
+            .fetchOne(0, Int::class.java) ?: 0
+        if (cnt != deduped.size) {
+            throw BadRequestException("one or more authors not found")
+        }
+        return deduped
+    }
+
+    private fun insertBookAuthors(bookId: Long, authorIds: List<Long>) {
+        authorIds.forEachIndexed { idx, authorId ->
+            dsl.insertInto(BOOK_AUTHORS)
+                .set(BOOK_AUTHORS.BOOK_ID, bookId)
+                .set(BOOK_AUTHORS.AUTHOR_ID, authorId)
+                .set(BOOK_AUTHORS.AUTHOR_ORDER, idx + 1)
+                .execute()
+        }
+    }
+
+    private inline fun <T> mapConflict(action: () -> T): T {
+        try {
+            return action()
+        } catch (e: org.jooq.exception.DataAccessException) {
+            throw ConflictException("conflict performing DB operation", e)
+        } catch (e: java.sql.SQLIntegrityConstraintViolationException) {
+            throw ConflictException("conflict performing DB operation", e)
+        }
+    }
+
     @Transactional
     fun createBook(request: BookRequest): BookResponse {
         if (request.authorIds.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "book must have at least one author")
+            throw BadRequestException("book must have at least one author")
         }
 
-        val statusEnum = request.status?.let {
-            try {
-                PublicationStatus.valueOf(it)
-            } catch (ex: IllegalArgumentException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid status: $it")
-            }
+        // authorIds に重複が含まれている場合は先に重複除去して順序を保持する
+        val authorIds = request.authorIds.distinct()
+        if (authorIds.isEmpty()) {
+            throw BadRequestException("book must have at least one author")
         }
+
+        val publicationStatus = checkPublicationStatus(request.status)
 
         var insertStep = dsl.insertInto(BOOKS)
             .set(BOOKS.TITLE, request.title)
@@ -39,68 +85,57 @@ class BookService(private val dsl: DSLContext) {
         if (request.price != null) {
             insertStep = insertStep.set(BOOKS.PRICE, request.price)
         }
-        if (statusEnum != null) {
-            insertStep = insertStep.set(BOOKS.STATUS, statusEnum)
+        if (publicationStatus != null) {
+            insertStep = insertStep.set(BOOKS.STATUS, publicationStatus)
         }
 
-        val bookRecord = insertStep
-            .returning(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
-            .fetchOne() ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "failed to insert book")
+        // authorIds の存在チェック
+        val validatedAuthorIds = checkAuthorExist(authorIds)
 
-        val bookId = bookRecord.get(BOOKS.ID)!!
-        val storedPrice = bookRecord.get(BOOKS.PRICE) as BigDecimal
-        val storedStatus = (bookRecord.get(BOOKS.STATUS) as PublicationStatus).name
+        return mapConflict {
+            val bookRecord = insertStep
+                    .returning(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
+                    .fetchOne() ?: throw ConflictException("failed to insert book")
 
-        if (request.authorIds.isNotEmpty()) {
-            val batch = request.authorIds.map { authorId ->
-                dsl.insertInto(BOOK_AUTHORS)
-                    .set(BOOK_AUTHORS.BOOK_ID, bookId)
-                    .set(BOOK_AUTHORS.AUTHOR_ID, authorId)
-            }
-            // execute inserts
-            batch.forEach { it.execute() }
+            val id = bookRecord.get(BOOKS.ID) as Long
+            val title = bookRecord.get(BOOKS.TITLE) as String
+            val price = bookRecord.get(BOOKS.PRICE) ?: java.math.BigDecimal.ZERO
+            val status = bookRecord.get(BOOKS.STATUS)?.name ?: "UNKNOWN"
+
+            // author_rel を作成。順序は渡された配列順を author_order に入れる。
+            insertBookAuthors(id, validatedAuthorIds)
+
+            BookResponse(
+                id = id,
+                title = title,
+                authorIds = validatedAuthorIds,
+                price = price,
+                status = status
+            )
         }
-
-        return BookResponse(
-            id = bookId,
-            title = bookRecord.get(BOOKS.TITLE)!!,
-            authorIds = request.authorIds,
-            price = storedPrice,
-            status = storedStatus
-        )
     }
 
     @Transactional
     fun updateBook(id: Long, request: BookUpdateRequest): BookResponse {
         // book 存在確認
-        val exists = dsl.select(BOOKS.ID)
-            .from(BOOKS)
-            .where(BOOKS.ID.eq(id))
-            .fetchOne() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "book not found")
+        if (dsl.selectCount().from(BOOKS).where(BOOKS.ID.eq(id)).fetchOne(0, Int::class.java) == 0) {
+            throw NotFoundException("book not found")
+        }
 
         // authorIds が明示的に提供されている場合は空禁止
         if (request.authorIds != null && request.authorIds.isEmpty()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "book must have at least one author")
+            throw BadRequestException("book must have at least one author")
         }
 
         // status の検証
-        val statusEnum = request.status?.let {
-            try {
-                PublicationStatus.valueOf(it)
-            } catch (ex: IllegalArgumentException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid status: $it")
-            }
-        }
+        val publicationStatus = checkPublicationStatus(request.status)
 
         // 著者を差し替える場合は、指定された authorId が全て存在するか確認
         if (request.authorIds != null) {
-            val cnt = dsl.selectCount()
-                .from(AUTHORS)
-                .where(AUTHORS.ID.`in`(request.authorIds))
-                .fetchOne(0, Int::class.java) ?: 0
-            if (cnt != request.authorIds.size) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "one or more authors not found")
-            }
+            val validatedAuthorIds = checkAuthorExist(request.authorIds)
+
+            dsl.deleteFrom(BOOK_AUTHORS).where(BOOK_AUTHORS.BOOK_ID.eq(id)).execute()
+            insertBookAuthors(id, validatedAuthorIds)
         }
 
         // BOOKS の更新（指定があるフィールドのみ）
@@ -111,44 +146,29 @@ class BookService(private val dsl: DSLContext) {
             moreStep = null ?: firstStep.set(BOOKS.TITLE, request.title)
             needUpdate = true
         }
-        if (statusEnum != null) {
-            moreStep = moreStep?.set(BOOKS.STATUS, statusEnum) ?: firstStep.set(BOOKS.STATUS, statusEnum)
+        if (publicationStatus != null) {
+            moreStep = moreStep?.set(BOOKS.STATUS, publicationStatus) ?: firstStep.set(BOOKS.STATUS, publicationStatus)
             needUpdate = true
         }
         if (request.price != null) {
             moreStep = moreStep?.set(BOOKS.PRICE, request.price) ?: firstStep.set(BOOKS.PRICE, request.price)
             needUpdate = true
         }
-        val finalUpdate = moreStep ?: firstStep
 
         val bookRecord = if (needUpdate) {
-            // needUpdate == true のときは moreStep が必ず非 null のはずなので非 null を明示
             moreStep!!
                 .where(BOOKS.ID.eq(id))
                 .returning(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
-                .fetchOne() ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "failed to update book")
+                .fetchOne() ?: throw ConflictException("failed to update book")
         } else {
             dsl.select(BOOKS.ID, BOOKS.TITLE, BOOKS.PRICE, BOOKS.STATUS)
                 .from(BOOKS)
                 .where(BOOKS.ID.eq(id))
-                .fetchOne() ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "failed to fetch book")
-        }
-
-        // 著者差し替え処理（nullなら変更しない）
-        if (request.authorIds != null) {
-            // 既存関連を削除し、新しい順序で挿入
-            dsl.deleteFrom(BOOK_AUTHORS).where(BOOK_AUTHORS.BOOK_ID.eq(id)).execute()
-            request.authorIds.forEachIndexed { idx, authorId ->
-                dsl.insertInto(BOOK_AUTHORS)
-                    .set(BOOK_AUTHORS.BOOK_ID, id)
-                    .set(BOOK_AUTHORS.AUTHOR_ID, authorId)
-                    .set(BOOK_AUTHORS.AUTHOR_ORDER, idx + 1)
-                    .execute()
-            }
+                .fetchOne() ?: throw ConflictException("failed to fetch book")
         }
 
         // 最終的な著者リストを取得（差し替え無しなら既存を取得）
-        val finalAuthorIds = request.authorIds
+        val finalAuthorIds = request.authorIds?.distinct()
             ?: dsl.select(BOOK_AUTHORS.AUTHOR_ID)
                 .from(BOOK_AUTHORS)
                 .where(BOOK_AUTHORS.BOOK_ID.eq(id))
@@ -156,12 +176,14 @@ class BookService(private val dsl: DSLContext) {
                 .fetch(BOOK_AUTHORS.AUTHOR_ID)
                 .map { it as Long }
 
+        val storedId = bookRecord.get(BOOKS.ID) as Long
+        val storedTitle = bookRecord.get(BOOKS.TITLE) as String
         val storedPrice = bookRecord.get(BOOKS.PRICE) as java.math.BigDecimal
         val storedStatus = (bookRecord.get(BOOKS.STATUS) as PublicationStatus).name
 
         return BookResponse(
-            id = bookRecord.get(BOOKS.ID) as Long,
-            title = bookRecord.get(BOOKS.TITLE) as String,
+            id = storedId,
+            title = storedTitle,
             authorIds = finalAuthorIds,
             price = storedPrice,
             status = storedStatus

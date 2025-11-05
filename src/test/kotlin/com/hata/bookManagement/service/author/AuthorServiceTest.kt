@@ -4,10 +4,7 @@ import com.hata.bookManagement.dto.author.AuthorRequest
 import com.hata.bookManagement.dto.author.AuthorUpdateRequest
 import com.hata.jooq.enums.PublicationStatus
 import com.hata.jooq.tables.Authors.AUTHORS
-import org.flywaydb.core.Flyway
 import org.jooq.DSLContext
-import org.jooq.SQLDialect
-import org.jooq.impl.DSL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
@@ -15,11 +12,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
-import org.junit.jupiter.api.AfterAll
 import java.math.BigDecimal
 import java.time.LocalDate
-import javax.sql.DataSource
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AuthorServiceTest {
@@ -36,11 +30,8 @@ class AuthorServiceTest {
         service = AuthorService(dsl)
     }
 
-    // Container lifecycle is managed by TestDb (shared per-JVM). Do not stop it here.
-
     @BeforeEach
     fun cleanup() {
-        // Clean tables to ensure test isolation. Use TRUNCATE CASCADE to avoid trigger checks
         dsl.execute("TRUNCATE TABLE public.book_authors, public.books, public.authors RESTART IDENTITY CASCADE")
     }
 
@@ -68,14 +59,14 @@ class AuthorServiceTest {
             .returning(AUTHORS.ID)
             .fetchOne()!!
 
+        val authorId = initial.getValue(AUTHORS.ID) as Long
+
         val req = AuthorUpdateRequest(
-            name = "Old Name",
-            birthDate = LocalDate.of(1970,3,4),
             newName = "New Name",
             newBirthDate = null
         )
 
-        val resp = service.updateAuthor(req)
+        val resp = service.updateAuthor(authorId, req)
 
         assertEquals("New Name", resp.name)
     }
@@ -121,18 +112,106 @@ class AuthorServiceTest {
         assertNotNull(first.id)
 
         // second insert with same name+birthDate should fail due to unique constraint
-        val ex = org.junit.jupiter.api.assertThrows<org.springframework.web.server.ResponseStatusException> {
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.ConflictException> {
             service.createAuthor(req)
         }
-    assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.statusCode)
     }
 
     @Test
     fun createAuthorBlankName_shouldThrowIllegalArgument() {
         val req = AuthorRequest(name = " ", birthDate = LocalDate.of(1990, 1, 1))
 
-        org.junit.jupiter.api.assertThrows<IllegalArgumentException> {
+            org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
             service.createAuthor(req)
+        }
+    }
+
+    @Test
+    fun createAuthorFutureBirthDate_shouldThrowBadRequest() {
+        val tomorrow = LocalDate.now().plusDays(1)
+        val req = AuthorRequest(name = "Future Author", birthDate = tomorrow)
+
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
+            service.createAuthor(req)
+        }
+    }
+
+    @Test
+    fun createAuthorBirthDateNotFuture_allowed() {
+        // use a date that is guaranteed not-future in JST to avoid timezone race
+        val jst = java.time.ZoneId.of("Asia/Tokyo")
+        val safeDate = LocalDate.now(jst).minusDays(1)
+        // use a unique name to avoid accidental unique-constraint collisions across runs
+        val uniqueName = "Today Author ${System.currentTimeMillis()}"
+        val req = AuthorRequest(name = uniqueName, birthDate = safeDate)
+
+        val resp = service.createAuthor(req)
+
+        assertNotNull(resp.id)
+        assertEquals(req.birthDate, resp.birthDate)
+    }
+
+    @Test
+    fun updateAuthor_notFound_shouldThrowNotFound() {
+        val req = AuthorUpdateRequest(newName = "X", newBirthDate = null)
+
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.NotFoundException> {
+            service.updateAuthor(99999L, req)
+        }
+    }
+
+    @Test
+    fun updateAuthor_nothingToUpdate_shouldThrowBadRequest() {
+        // insert initial author
+        val initial = dsl.insertInto(AUTHORS)
+            .set(AUTHORS.NAME, "Old Name2")
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .returning(AUTHORS.ID)
+            .fetchOne()!!
+
+        val authorId = initial.getValue(AUTHORS.ID) as Long
+
+        val req = AuthorUpdateRequest(newName = null, newBirthDate = null)
+
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
+            service.updateAuthor(authorId, req)
+        }
+    }
+
+    @Test
+    fun updateAuthor_blankNewName_shouldThrowBadRequest() {
+        // insert initial author
+        val initial = dsl.insertInto(AUTHORS)
+            .set(AUTHORS.NAME, "Old Name3")
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .returning(AUTHORS.ID)
+            .fetchOne()!!
+
+        val authorId = initial.getValue(AUTHORS.ID) as Long
+
+        val req = AuthorUpdateRequest(newName = " ", newBirthDate = null)
+
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
+            service.updateAuthor(authorId, req)
+        }
+    }
+
+    @Test
+    fun updateAuthor_futureNewBirthDate_shouldThrowBadRequest() {
+        // insert initial author
+        val initial = dsl.insertInto(AUTHORS)
+            .set(AUTHORS.NAME, "Old Name4")
+            .set(AUTHORS.BIRTH_DATE, LocalDate.of(1970,3,4).atStartOfDay().atOffset(java.time.ZoneOffset.ofHours(9)))
+            .returning(AUTHORS.ID)
+            .fetchOne()!!
+
+        val authorId = initial.getValue(AUTHORS.ID) as Long
+
+        val tomorrow = LocalDate.now().plusDays(1)
+        val req = AuthorUpdateRequest(newName = null, newBirthDate = tomorrow)
+
+        org.junit.jupiter.api.assertThrows<com.hata.bookManagement.exception.BadRequestException> {
+            service.updateAuthor(authorId, req)
         }
     }
 

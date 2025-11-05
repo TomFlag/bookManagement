@@ -38,7 +38,7 @@ class BookControllerTest {
 
     @BeforeEach
     fun setup() {
-        val controller = com.hata.bookManagement.api.book.BookController(service)
+        val controller = BookController(service)
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setMessageConverters(MappingJackson2HttpMessageConverter(mapper))
             .build()

@@ -97,25 +97,25 @@ class AuthorControllerTest {
     fun updateAuthor() {
         // Arrange
         val req = com.hata.bookManagement.dto.author.AuthorUpdateRequest(
-            name = "Haruki Murakami",
-            birthDate = java.time.LocalDate.of(1949, 1, 1),
             newName = "H. Murakami",
             newBirthDate = null
         )
 
+        val originalBirth = java.time.LocalDate.of(1949, 1, 1)
+
         val resp = com.hata.bookManagement.dto.author.AuthorResponse(
             id = 100L,
-            name = req.newName ?: req.name,
-            birthDate = req.birthDate
+            name = req.newName ?: "Haruki Murakami",
+            birthDate = originalBirth
         )
 
-        Mockito.doReturn(resp).`when`(service).updateAuthor(req)
+        Mockito.doReturn(resp).`when`(service).updateAuthor(100L, req)
 
         val reqJson = mapper.writeValueAsString(req)
         val expectedJson = mapper.writeValueAsString(resp)
 
         // Act & Assert
-        mockMvc.perform(put("/api/authors")
+        mockMvc.perform(put("/api/authors/100")
             .contentType(MediaType.APPLICATION_JSON)
             .content(reqJson))
             .andExpect(status().isOk)

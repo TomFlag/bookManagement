@@ -30,9 +30,9 @@ class AuthorController(private val service: AuthorService) {
         return service.createAuthor(req)
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    fun updateAuthor(@RequestBody req: AuthorUpdateRequest): AuthorResponse {
-        return service.updateAuthor(req)
+    fun updateAuthor(@PathVariable id: Long, @RequestBody req: AuthorUpdateRequest): AuthorResponse {
+        return service.updateAuthor(id, req)
     }
 }

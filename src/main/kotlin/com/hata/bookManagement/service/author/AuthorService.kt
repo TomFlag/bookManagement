@@ -4,105 +4,124 @@ import com.hata.bookManagement.dto.author.AuthorRequest
 import com.hata.bookManagement.dto.author.AuthorResponse
 import com.hata.bookManagement.dto.author.AuthorUpdateRequest
 import com.hata.bookManagement.dto.book.BookResponse
-import com.hata.jooq.enums.PublicationStatus
+import com.hata.bookManagement.exception.BadRequestException
+import com.hata.bookManagement.exception.ConflictException
+import com.hata.bookManagement.exception.NotFoundException
 import com.hata.jooq.tables.Authors.AUTHORS
 import com.hata.jooq.tables.BookAuthors.BOOK_AUTHORS
 import com.hata.jooq.tables.Books.BOOKS
 import org.jooq.DSLContext
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import kotlin.collections.component1
-import kotlin.collections.component2
 
 @Service
 class AuthorService(private val dsl: DSLContext) {
 
     private val jst: ZoneId = ZoneId.of("Asia/Tokyo")
 
+    // ----------------- helpers -----------------
+    private inline fun <T> mapConflict(action: () -> T): T {
+        try {
+            return action()
+        } catch (e: org.jooq.exception.DataAccessException) {
+            throw ConflictException("author already exists", e)
+        } catch (e: java.sql.SQLIntegrityConstraintViolationException) {
+            throw ConflictException("author already exists", e)
+        }
+    }
+
+    private fun toOffsetDate(ld: java.time.LocalDate): OffsetDateTime = ld.atStartOfDay(jst).toOffsetDateTime()
+
+    private fun toLocalDateFromDb(value: Any?): java.time.LocalDate {
+        val odt = value as? OffsetDateTime ?: throw BadRequestException("invalid birth_date")
+        return odt.toInstant().atZone(jst).toLocalDate()
+    }
+
+    private fun validateNameNotBlank(name: String, fieldName: String = "name") {
+        if (name.isBlank()) throw BadRequestException("$fieldName must not be blank")
+    }
+
+    private fun validateBirthDateNotFuture(ld: java.time.LocalDate?, fieldName: String = "birthDate") {
+        if (ld != null && ld.isAfter(java.time.LocalDate.now(jst))) {
+            throw BadRequestException("$fieldName must not be in the future")
+        }
+    }
+
     @Transactional
     fun createAuthor(request: AuthorRequest): AuthorResponse {
         // 入力検証
-        if (request.name.isBlank()) {
-            throw IllegalArgumentException("name must not be blank")
-        }
+        validateNameNotBlank(request.name)
+        validateBirthDateNotFuture(request.birthDate)
 
-        val odt = request.birthDate.atStartOfDay(jst).toOffsetDateTime()
+        val odt = toOffsetDate(request.birthDate)
 
-        try {
+        return mapConflict {
             val record = dsl.insertInto(AUTHORS)
                 .set(AUTHORS.NAME, request.name)
                 .set(AUTHORS.BIRTH_DATE, odt)
                 .returning(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
                 .fetchOne() ?: throw IllegalStateException("failed to insert author")
 
-            val storedOdt = requireNotNull(record.getValue(AUTHORS.BIRTH_DATE)) as OffsetDateTime
-            // OffsetDateTime -> Asia/Tokyo の LocalDate に変換して返す
-            val birthLocalDate = storedOdt.toInstant().atZone(jst).toLocalDate()
+            val birthLocalDate = toLocalDateFromDb(record.getValue(AUTHORS.BIRTH_DATE))
 
-            return AuthorResponse(
-                id = requireNotNull(record.getValue(AUTHORS.ID)) as Long,
-                name = requireNotNull(record.getValue(AUTHORS.NAME)) as String,
+            AuthorResponse(
+                id = requireNotNull(record.getValue(AUTHORS.ID)),
+                name = requireNotNull(record.getValue(AUTHORS.NAME)),
                 birthDate = birthLocalDate
             )
-        } catch (e: org.jooq.exception.DataAccessException) {
-            // 一意制約違反などで登録に失敗した場合、409 Conflict を返す
-            throw ResponseStatusException(HttpStatus.CONFLICT, "author already exists", e)
-        } catch (e: java.sql.SQLIntegrityConstraintViolationException) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "author already exists", e)
         }
     }
 
     @Transactional
-    fun updateAuthor(request: AuthorUpdateRequest): AuthorResponse {
-        // 現在の識別情報を JST の午前0時の OffsetDateTime に変換
-        val currentOdt = request.birthDate.atStartOfDay(jst).toOffsetDateTime()
-        val newOdt = request.newBirthDate?.atStartOfDay(jst)?.toOffsetDateTime()
+    fun updateAuthor(id: Long, request: AuthorUpdateRequest): AuthorResponse {
+        // 入力検証
+        if (request.newName != null) validateNameNotBlank(request.newName, "newName")
+        validateBirthDateNotFuture(request.newBirthDate, "newBirthDate")
 
-        // 存在確認（name と birth_date の完全一致）
+        // 既存著者を id で取得
         val existing = dsl.select(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
             .from(AUTHORS)
-            .where(AUTHORS.NAME.eq(request.name).and(AUTHORS.BIRTH_DATE.eq(currentOdt)))
-            .fetchOne() ?: throw IllegalStateException("author not found")
+            .where(AUTHORS.ID.eq(id))
+            .fetchOne() ?: throw NotFoundException("author not found")
 
         // 更新する値が何も無ければエラー
-        if (request.newName == null && newOdt == null) {
-            throw IllegalArgumentException("nothing to update")
+        if (request.newName == null && request.newBirthDate == null) {
+            throw BadRequestException("nothing to update")
         }
+
+        val newBirthOffsetDate = request.newBirthDate?.let { toOffsetDate(it) }
 
         // 最初の set を条件に合わせて作成し、残りをチェインする
         val firstSet = if (request.newName != null) {
             dsl.update(AUTHORS).set(AUTHORS.NAME, request.newName)
         } else {
-            // newName == null なら newOdt は必ず非 null（上のチェックで保証）
-            dsl.update(AUTHORS).set(AUTHORS.BIRTH_DATE, newOdt!!)
+            dsl.update(AUTHORS).set(AUTHORS.BIRTH_DATE, newBirthOffsetDate!!)
         }
 
-        val updateStep = if (request.newName != null && newOdt != null) {
-            firstSet.set(AUTHORS.BIRTH_DATE, newOdt)
+        val updateStep = if (request.newName != null && newBirthOffsetDate != null) {
+            firstSet.set(AUTHORS.BIRTH_DATE, newBirthOffsetDate)
         } else {
             firstSet
         }
 
-        // 更新対象は先に取得した行の ID を使う（安全）
-        val updated = updateStep
-            .where(AUTHORS.ID.eq(existing.getValue(AUTHORS.ID) as Long))
-            .returning(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
-            .fetchOne()
+        return mapConflict {
+            val updated = updateStep
+                .where(AUTHORS.ID.eq(requireNotNull(existing.getValue(AUTHORS.ID))))
+                .returning(AUTHORS.ID, AUTHORS.NAME, AUTHORS.BIRTH_DATE)
+                .fetchOne()
 
-        val record = updated ?: throw IllegalStateException("failed to update author")
+            val record = updated ?: throw ConflictException("failed to update author")
 
-        val storedOdt = record.getValue(AUTHORS.BIRTH_DATE) as OffsetDateTime
-        val birthLocalDate = storedOdt.toInstant().atZone(jst).toLocalDate()
+            val birthLocalDate = toLocalDateFromDb(record.getValue(AUTHORS.BIRTH_DATE))
 
-        return AuthorResponse(
-            id = (record.getValue(AUTHORS.ID) as Long),
-            name = record.getValue(AUTHORS.NAME) as String,
-            birthDate = birthLocalDate
-        )
+            AuthorResponse(
+                id = requireNotNull(record.getValue(AUTHORS.ID)),
+                name = requireNotNull(record.getValue(AUTHORS.NAME)),
+                birthDate = birthLocalDate
+            )
+        }
     }
 
     @Transactional(readOnly = true)
@@ -111,15 +130,14 @@ class AuthorService(private val dsl: DSLContext) {
         dsl.select(AUTHORS.ID)
             .from(AUTHORS)
             .where(AUTHORS.ID.eq(authorId))
-            .fetchOne() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "author not found")
+            .fetchOne() ?: throw NotFoundException("author not found")
 
-        // まず著者に紐づく書籍 ID を取得
-        val bookIds = dsl.selectDistinct(BOOKS.ID)
-            .from(BOOKS)
-            .join(BOOK_AUTHORS).on(BOOKS.ID.eq(BOOK_AUTHORS.BOOK_ID))
+        // 著者に紐づく書籍 ID を取得
+        val bookIds = dsl.selectDistinct(BOOK_AUTHORS.BOOK_ID)
+            .from(BOOK_AUTHORS)
             .where(BOOK_AUTHORS.AUTHOR_ID.eq(authorId))
-            .fetch(BOOKS.ID)
-            .map { it as Long }
+            .fetch(BOOK_AUTHORS.BOOK_ID)
+            .map { (it as Number).toLong() }
 
         if (bookIds.isEmpty()) return emptyList()
 
@@ -136,9 +154,9 @@ class AuthorService(private val dsl: DSLContext) {
         return grouped.map { (bookId, recs) ->
             val first = recs.first()
             val title = first.get(BOOKS.TITLE) as String
-            val price = first.get(BOOKS.PRICE) as java.math.BigDecimal
-            val status = (first.get(BOOKS.STATUS) as PublicationStatus).name
-            val authorIds = recs.map { it.get(BOOK_AUTHORS.AUTHOR_ID) as Long }
+            val price = first.get(BOOKS.PRICE) ?: java.math.BigDecimal.ZERO
+            val status = first.get(BOOKS.STATUS)?.name ?: "UNKNOWN"
+            val authorIds = recs.map { (it.get(BOOK_AUTHORS.AUTHOR_ID) as Number).toLong() }
             BookResponse(
                 id = bookId,
                 title = title,
